@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+export GROUT_DATAPATH=1
+
 if ! echo '{}' | yq -y '.' > /dev/null 2>&1; then
     echo "ERROR: python yq required (pip install yq)" >&2
     exit 1
