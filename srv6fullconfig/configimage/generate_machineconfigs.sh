@@ -1,6 +1,7 @@
 #!/bin/bash
 # generate_machineconfigs.sh - Compile MachineConfig manifests from
-# butane sources (openperouter-master/worker, dns, registry).
+# butane sources (openperouter-master/worker, dns, registry), and render the
+# CSR auto-approver manifest from the installation's agent-config.yaml.
 #
 # Usage: generate_machineconfigs.sh <output_dir>
 #
@@ -18,6 +19,11 @@ mkdir -p "${output_dir}"
 
 if ! command -v butane &>/dev/null; then
     echo "ERROR: butane is required but not found. Install with: sudo dnf install butane"
+    exit 1
+fi
+
+if ! command -v yq &>/dev/null; then
+    echo "ERROR: yq is required to render the CSR auto-approver manifest. Install with: pip install yq"
     exit 1
 fi
 
@@ -61,5 +67,30 @@ fi
 
 echo "  set-cluster-mtu.yaml"
 cp "${EXTRASDIR}/config/set-cluster-mtu.yaml" "${output_dir}/set-cluster-mtu.yaml"
+
+# Render a CSR approver whose allow-list follows the declared Agent hosts.
+# This prevents it from approving CSRs for arbitrary node names.
+csr_template="${EXTRASDIR}/config/99-csr-auto-approver.yaml.in"
+agent_config="${SCRIPTDIR}/agent-config.yaml"
+if [[ ! -f "${csr_template}" || ! -f "${agent_config}" ]]; then
+    echo "ERROR: CSR auto-approver template or agent-config.yaml is missing" >&2
+    exit 1
+fi
+
+mapfile -t approved_nodes < <(yq -r '.hosts[].hostname' "${agent_config}")
+if [[ "${#approved_nodes[@]}" -eq 0 ]]; then
+    echo "ERROR: No hostnames found in ${agent_config}" >&2
+    exit 1
+fi
+for node in "${approved_nodes[@]}"; do
+    if [[ ! "${node}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
+        echo "ERROR: Invalid hostname in ${agent_config}: ${node}" >&2
+        exit 1
+    fi
+done
+allowed_nodes="${approved_nodes[*]}"
+echo "  99-csr-auto-approver.yaml (nodes: ${allowed_nodes})"
+sed "s|__ALLOWED_NODE_NAMES__|${allowed_nodes}|g" "${csr_template}" \
+    > "${output_dir}/99-csr-auto-approver.yaml"
 
 echo "==> MachineConfig manifests generated."

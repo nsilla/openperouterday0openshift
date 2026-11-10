@@ -1,0 +1,128 @@
+# This file is rendered by configimage/generate_machineconfigs.sh.  The
+# __ALLOWED_NODE_NAMES__ placeholder is populated from agent-config.yaml so
+# only the hosts declared for this installation can have kubelet CSRs approved.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csr-auto-approver
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csr-auto-approver
+rules:
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests/approval
+    verbs:
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csr-auto-approver
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csr-auto-approver
+subjects:
+  - kind: ServiceAccount
+    name: csr-auto-approver
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csr-auto-approver
+  namespace: kube-system
+  labels:
+    app: csr-auto-approver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csr-auto-approver
+  template:
+    metadata:
+      labels:
+        app: csr-auto-approver
+    spec:
+      serviceAccountName: csr-auto-approver
+      priorityClassName: system-cluster-critical
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: approver
+          # Must match the OpenShift release in appliance-config.yaml.base.
+          image: registry.redhat.io/openshift4/ose-cli:v4.22.3
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -ceu
+            - |
+              readonly ALLOWED_NODES="__ALLOWED_NODE_NAMES__"
+
+              is_allowed_node() {
+                case " ${ALLOWED_NODES} " in
+                  *" $1 "*) return 0 ;;
+                  *) return 1 ;;
+                esac
+              }
+
+              while true; do
+                # The human-readable table is used only to select pending
+                # requests. Each selected CSR is subsequently verified via
+                # its API fields and signed certificate request.
+                for csr in $(oc get csr --no-headers 2>/dev/null | awk '$NF == "Pending" { print $1 }'); do
+                  signer=$(oc get csr "${csr}" -o jsonpath='{.spec.signerName}' 2>/dev/null || true)
+                  case "${signer}" in
+                    kubernetes.io/kube-apiserver-client-kubelet|kubernetes.io/kubelet-serving) ;;
+                    *) continue ;;
+                  esac
+
+                  requester=$(oc get csr "${csr}" -o jsonpath='{.spec.username}' 2>/dev/null || true)
+
+                  # A node certificate renewal is made by that node. Initial
+                  # bootstrap CSRs are made only by the MCO node-bootstrapper.
+                  case "${requester}" in
+                    system:node:*) ;;
+                    system:serviceaccount:openshift-machine-config-operator:node-bootstrapper) ;;
+                    *) continue ;;
+                  esac
+
+                  request=$(oc get csr "${csr}" -o jsonpath='{.spec.request}' 2>/dev/null || true)
+                  [ -n "${request}" ] || continue
+                  subject=$(printf '%s' "${request}" | base64 -d 2>/dev/null | \
+                    openssl req -noout -subject -nameopt RFC2253 2>/dev/null || true)
+                  node=$(printf '%s\n' "${subject}" | \
+                    sed -n 's/^subject=.*CN=system:node:\([^,]*\).*$/\1/p')
+
+                  [ -n "${node}" ] && is_allowed_node "${node}" || continue
+                  case "${subject}" in *"O=system:nodes"*) ;; *) continue ;; esac
+                  [ "${requester}" = "system:node:${node}" ] || \
+                    [ "${requester}" = "system:serviceaccount:openshift-machine-config-operator:node-bootstrapper" ] || continue
+
+                  # Serving CSRs must also carry the declared node hostname as
+                  # a DNS SAN; client CSRs identify the node in their subject.
+                  if [ "${signer}" = "kubernetes.io/kubelet-serving" ]; then
+                    sans=$(printf '%s' "${request}" | base64 -d 2>/dev/null | \
+                      openssl req -noout -text 2>/dev/null | tr '\n' ' ')
+                    printf '%s\n' "${sans}" | \
+                      grep -Eq "(^|[[:space:],])DNS:${node}([[:space:],]|$)" || continue
+                  fi
+
+                  oc adm certificate approve "${csr}" 2>/dev/null || true
+                done
+                sleep 10
+              done

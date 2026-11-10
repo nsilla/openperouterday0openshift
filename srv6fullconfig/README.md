@@ -58,6 +58,11 @@ and copies the matching YAML files.
 - **Appliance ISO**: [`appliance/generate_appliance.sh`](appliance/generate_appliance.sh) `<pull_secret_file>`
 - **Config-image ISO**: [`configimage/generate_config_image.sh`](configimage/generate_config_image.sh) `<pull_secret_file>`
 
+The generated config-image also includes a CSR auto-approver. Its node-name
+allow-list is rendered from `configimage/agent-config.yaml` at build time; when
+adding or removing a host, rebuild the config-image ISO. The approver is limited
+to kubelet client and serving CSRs for those declared hostnames.
+
 ## Configuration
 
 ### agent-config.yaml
