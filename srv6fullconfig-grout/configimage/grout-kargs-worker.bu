@@ -7,7 +7,7 @@ metadata:
 openshift:
   kernel_arguments:
   - iommu=pt
-  - intel_iommu=on
+  - amd_iommu=on
   - console=tty0
   - console=ttyS0,115200n8
   - default_hugepagesz=1G

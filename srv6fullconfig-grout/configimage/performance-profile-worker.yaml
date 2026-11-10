@@ -4,12 +4,12 @@ metadata:
   name: grout-perf-worker
 spec:
   cpu:
-    reserved: "0-3"
-    isolated: "4-11"
+    reserved: "0-15"
+    isolated: "16-47"
   hugepages:
     defaultHugepagesSize: 1G
     pages:
-    - count: 4
+    - count: 24
       size: 1G
       node: 0
   numa:
@@ -20,7 +20,7 @@ spec:
     perPodPowerManagement: false
   additionalKernelArgs:
   - iommu=pt
-  - intel_iommu=on
+  - amd_iommu=on
   - console=tty0
   - console=ttyS0,115200n8
   nodeSelector:

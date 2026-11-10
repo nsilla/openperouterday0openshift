@@ -13,7 +13,7 @@ underlays:
     interfaces:
     - type: NetworkDevice
       networkDevice:
-        interfaceName: enp2s0
+        interfaceName: eno12399v0
     routerIDCIDR: 10.0.0.0/24
     isis:
       baseNet: "49.0001.0000.0000.0000.00"
@@ -32,26 +32,34 @@ underlays:
           - type: ipv4vpn
           - type: ipv6vpn
       - type: Internal
-        listenRange: fd2e:6f44:5dd8:c956::/120
+        listenRange: 2600:52:7::/48
         addressFamilies:
           - type: evpn
             properties:
               - type: routeReflectorClient
       - type: Internal
-        address: fd2e:6f44:5dd8:c956::50
+        address: 2600:52:7:135::21
         addressFamilies:
           - type: evpn
       - type: Internal
-        address: fd2e:6f44:5dd8:c956::51
+        address: 2600:52:7:136::22
         addressFamilies:
           - type: evpn
       - type: Internal
-        address: fd2e:6f44:5dd8:c956::52
+        address: 2600:52:7:137::23
         addressFamilies:
           - type: evpn
 
+l2trunks:
+  - name: trunk
+    type: SRIOV
+    sriov:
+      pfName: eno12399np0
+      vfIndex: 1   # eno12399v1
+
 l2vnis:
-  - vni: 210
+  - name: vni210
+    vni: 210
     routingDomain:
       type: L3VPN
       l3vpn:
@@ -60,11 +68,11 @@ l2vnis:
     gatewayIPs:
       - "192.168.110.1/24"
       - "fd00:110::1/64"
-    hostMaster:
-      type: LinuxBridge
-      linuxBridge:
-        lifecycle: External
-        name: br0
+    trunk:
+      name: trunk
+      vlan:
+        tag: 42   # VLAN of the host VF in agent-config.yaml
+
 l3vpns:
   - name: red
     vrf: red
