@@ -24,6 +24,7 @@ ready from first boot — no post-install operators needed.
 | [`srv6raw/`](srv6raw/) | ISIS | SRv6 + VXLAN | Rawconfig (shell templates) | EVPN route reflector (master-0) |
 | [`srv6fullconfig/`](srv6fullconfig/) | ISIS | SRv6 + VXLAN | OpenPERouter static resources (underlay, l2vni, l3vpn) | EVPN RR (all 3 masters) east/west, SRv6 north/south |
 | [`evpnfullconfig/`](evpnfullconfig/) | eBGP | VXLAN only | Controller (`openpe_config.yaml`) | TOR distributes all routes |
+| [`srv6fullconfig-grout/`](srv6fullconfig-grout/) | ISIS | SRv6 + VXLAN | OpenPERouter static resources (underlay, l2vni, l3vpn) | EVPN RR (all 3 masters) east/west, SRv6 north/south — **Grout DPDK datapath** on SR-IOV VFs (bare-metal lab) |
 
 Each directory contains its own [TOPOLOGY.md](srv6raw/TOPOLOGY.md) with full addressing and peering details.
 
