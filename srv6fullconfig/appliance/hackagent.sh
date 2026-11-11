@@ -243,14 +243,23 @@ log "Stripped merge/replace config from ignition"
 
 log "Successfully built ignition ($(wc -c < "$IGN_FILE") bytes)"
 
-# Inject registry.redhat.io mirror into the registries.conf so that
-# toolbox / podman run can resolve images from the appliance registry
-# after reboot (the cluster IDMS/ITMS only cover OCP release images).
+# Inject additional-image mirrors into registries.conf so that toolbox and the
+# Quay-hosted CSR approver CLI can resolve from the appliance registry after
+# reboot (the cluster IDMS/ITMS only cover OCP release images).
 MIRROR_CONF='
 [[registry]]
   prefix = ""
   location = "registry.redhat.io"
   mirror-by-digest-only = false
+
+  [[registry.mirror]]
+    location = "registry.appliance.openshift.com:22625"
+    insecure = true
+
+[[registry]]
+  prefix = ""
+  location = "quay.io/openshift-release-dev"
+  mirror-by-digest-only = true
 
   [[registry.mirror]]
     location = "registry.appliance.openshift.com:22625"

@@ -64,8 +64,9 @@ spec:
         - operator: Exists
       containers:
         - name: approver
-          # Must match the OpenShift release in appliance-config.yaml.base.
-          image: registry.redhat.io/openshift4/ose-cli:v4.22.3
+          # CLI component from the OpenShift 4.22.3 release payload. It is
+          # embedded in the appliance local registry during the ISO build.
+          image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:3512edd3be82b233f4953be34dae13ce141ba9b1c71e5b60725afce78a2a6799
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash

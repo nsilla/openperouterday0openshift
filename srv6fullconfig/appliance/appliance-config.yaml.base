@@ -10,5 +10,7 @@ additionalImages:
   - name: quay.io/redhat-user-workloads/telco-5g-tenant/openperouter-operator-5-0:latest
   - name: quay.io/mavazque/ign-converter:latest
   - name: registry.redhat.io/rhel9/support-tools:latest
-  # Used by the CSR approver embedded in the companion config-image ISO.
-  - name: registry.redhat.io/openshift4/ose-cli:v4.22.3
+  # The OpenShift 4.22.3 cli component, used by the CSR approver embedded in
+  # the companion config-image ISO. This digest is resolved from the matching
+  # public OCP release payload.
+  - name: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:3512edd3be82b233f4953be34dae13ce141ba9b1c71e5b60725afce78a2a6799

@@ -90,15 +90,24 @@ TOML
 } > "${registries_conf}"
 
 # The appliance embeds additionalImages into its local registry but the
-# auto-generated IDMS/ITMS only cover OCP release images.  Add a mirror
-# rule so that registry.redhat.io pulls (e.g. toolbox, support-tools)
-# are served from the appliance registry.
+# auto-generated IDMS/ITMS only cover OCP release images. Add mirror rules so
+# extra Red Hat images and the Quay-hosted CLI release component are served
+# from the appliance registry.
 cat >> "${registries_conf}" <<TOML
 
 [[registry]]
   prefix = ""
   location = "registry.redhat.io"
   mirror-by-digest-only = false
+
+  [[registry.mirror]]
+    location = "registry.appliance.openshift.com:22625"
+    insecure = true
+
+[[registry]]
+  prefix = ""
+  location = "quay.io/openshift-release-dev"
+  mirror-by-digest-only = true
 
   [[registry.mirror]]
     location = "registry.appliance.openshift.com:22625"

@@ -83,7 +83,10 @@ if [[ "${#approved_nodes[@]}" -eq 0 ]]; then
     exit 1
 fi
 for node in "${approved_nodes[@]}"; do
-    if [[ ! "${node}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$ ]]; then
+    # Kubernetes node names may be FQDNs. Permit DNS labels separated by dots,
+    # while enforcing the 63-character per-label and 253-character total limits.
+    if [[ "${#node}" -gt 253 ]] || \
+       [[ ! "${node}" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]; then
         echo "ERROR: Invalid hostname in ${agent_config}: ${node}" >&2
         exit 1
     fi
